@@ -18,6 +18,27 @@
 
 #include "simulator.h"
 
+//returns integer value of process whose page to evict, updates *leastUsedPage
+int lru_page_to_evict(Pentry q[MAXPROCESSES], int timestamps[MAXPROCESSES][MAXPROCPAGES], int proctmp, int pagetmp, int *leastUsedPage){
+    leastResentPage = -1;
+    leastResentProcess = -1;
+    leastResentTick = INT_MAX;
+    for (int process = 0; process < MAXPROCESSES; process++)
+    {
+        for (int page = 0; page < MAXPROCPAGES; page++)
+        {
+            if (timestamps[process][page]<leastResentTick && q[process].pages[page])
+            {
+                leastResentTick = timestamps[process][page];
+                leastResentProcess = process;
+                leastResentPage = page;
+            }
+        }
+    }
+    *leastUsedPage = leastResentPage;
+    return leastResentProcess;
+}
+
 void pageit(Pentry q[MAXPROCESSES]) { 
     
     /* This file contains the stub for an LRU pager */
@@ -41,11 +62,56 @@ void pageit(Pentry q[MAXPROCESSES]) {
 	}
 	initialized = 1;
     }
+
+    //update times
+    for (proctmp = 0; proctmp < MAXPROCESSES; proctmp++)
+    {
+        pagetmp = q[proctmp].pc/PAGESIZE;
+        timestamps[proctmp][pagetmp] = tick;
+    }
     
+
+    //main control flow, loops through process'
+    for (proctmp = 0; proctmp < MAXPROCESSES; proctmp++){
+        //check if its dead if its dead kill
+        if (!q[proctmp].alive)
+        {
+            for (pagetmp = 0; pagetmp < MAXPROCPAGES; pagetmp++)
+            {
+                pageout(proctmp,pagetmp);
+            }
+            continue;
+        }
+    
+
+        
+        pagetmp = q[proctmp]/PAGESIZE;
+
+        //check if its swapped in, if it is then success
+        if (q[proctmp].pages[pagetmp])
+        {
+            continue;
+        }
+
+        //If here not swapped in, try swapping in:
+        if (pagein(proctmp, pagetmp))
+        {
+            continue
+        }
+
+        //If here swap failed send LRU algorithm
+        int leastUsedPage;
+        int leastUsedProcess = lru_page_to_evict(q,timestamps,proctmp,pagetmp, leastUsedPage);
+        printf("%d\n", leastUsedPage);
+
+    }
+
+
     /* TODO: Implement LRU Paging */
     fprintf(stderr, "pager-lru not yet implemented. Exiting...\n");
     exit(EXIT_FAILURE);
 
     /* advance time for next pageit iteration */
     tick++;
+    }
 } 
